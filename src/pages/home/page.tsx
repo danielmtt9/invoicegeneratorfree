@@ -1,12 +1,21 @@
 import React from "react";
 
+const BENEFITS = [
+  "Invoice content stays on your device",
+  "Download a polished PDF in seconds",
+  "No account signup required",
+  "Global currency support",
+  "Smart totals with balance due",
+  "Local draft convenience for repeat invoicing",
+];
+
 const ROLES = [
-  { slug: "freelancers", label: "Freelancers" },
-  { slug: "consultants", label: "Consultants" },
-  { slug: "contractors", label: "Contractors" },
-  { slug: "designers", label: "Designers" },
-  { slug: "photographers", label: "Photographers" },
-  { slug: "entrepreneurs", label: "Entrepreneurs" },
+  { slug: "freelancers", label: "Freelancers", outcome: "Send fast, clean invoices after every project milestone." },
+  { slug: "consultants", label: "Consultants", outcome: "Keep billing consistent across retainers and one-off work." },
+  { slug: "contractors", label: "Contractors", outcome: "Invoice labor and materials clearly for every job." },
+  { slug: "designers", label: "Designers", outcome: "Present premium-looking invoices that match your brand." },
+  { slug: "photographers", label: "Photographers", outcome: "Bill shoots, edits, and packages with client-ready clarity." },
+  { slug: "entrepreneurs", label: "Entrepreneurs", outcome: "Stay organized with simple invoicing as your business grows." },
 ];
 
 export default function Page() {
@@ -14,18 +23,20 @@ export default function Page() {
     <div className="homeLayout">
       <section className="panel homeHero">
         <div className="hd">
-          <h2>Create polished invoices in minutes</h2>
+          <div className="homeEyebrow">Privacy-first invoicing for modern independent businesses</div>
+          <h2 className="homeTitle">Create invoices your clients can trust in minutes</h2>
         </div>
         <div className="bd">
-          <p className="homeLead">
-            Build invoices in your browser, keep your invoice content local, and download a professional PDF instantly.
+          <p className="homeSubtext">
+            Welcome to a faster invoicing workflow. Build and edit in your browser, keep invoice data local on your
+            device, and download professional PDFs whenever you need them.
           </p>
           <div className="homeHeroActions">
             <a className="btn primary" href="/invoice/">
               Open Invoice Builder
             </a>
             <a className="btn" href="/faq/">
-              Read FAQ
+              See how it works
             </a>
           </div>
         </div>
@@ -33,17 +44,48 @@ export default function Page() {
 
       <section className="panel">
         <div className="hd">
-          <h2>Who it&apos;s for</h2>
+          <h2>Why users choose this platform</h2>
+        </div>
+        <div className="bd">
+          <div className="benefitGrid">
+            {BENEFITS.map((item) => (
+              <div key={item} className="benefitItem">
+                <span className="benefitCheck" aria-hidden="true">
+                  ✓
+                </span>
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="hd">
+          <h2>Built for six types of users</h2>
         </div>
         <div className="bd">
           <div className="roleGrid">
             {ROLES.map((role) => (
               <a key={role.slug} className="roleCard" href={`/${role.slug}/`}>
                 <strong>{role.label}</strong>
+                <p>{role.outcome}</p>
                 <span>View role-specific workflow</span>
               </a>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="panel homeCtaBand">
+        <div className="bd">
+          <div>
+            <h3>Ready to send your next invoice?</h3>
+            <p>Start now and create a client-ready PDF in just a few steps.</p>
+          </div>
+          <a className="btn primary" href="/invoice/">
+            Open Invoice Builder
+          </a>
         </div>
       </section>
     </div>
