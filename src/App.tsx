@@ -62,7 +62,7 @@ const MAX_LOGO_SIZE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_LOGO_TYPES = new Set(["image/png", "image/jpeg"]);
 const UNIT_OPTIONS: UnitType[] = ["hours", "quantity", "service", "fixed_rate"];
 const BRAND_SWATCHES = [
-  "#FFD166",
+  "#4F46E5",
   "#2563EB",
   "#0EA5E9",
   "#0891B2",
@@ -98,7 +98,7 @@ function uid() {
 
 function normalizeBrandColor(value: string): string {
   const v = (value || "").trim();
-  return /^#[0-9a-fA-F]{6}$/.test(v) ? v : "#FFD166";
+  return /^#[0-9a-fA-F]{6}$/.test(v) ? v : "#4F46E5";
 }
 
 function createDefaultDraft(invoiceNo = "INV-0001", logoDataUrl = ""): InvoiceDraft {
@@ -122,7 +122,7 @@ function createDefaultDraft(invoiceNo = "INV-0001", logoDataUrl = ""): InvoiceDr
     logoDataUrl,
     paymentLink: "",
     templateId: "minimalist",
-    brandColor: "#FFD166",
+    brandColor: "#4F46E5",
     items: [{ id: uid(), description: "Service or product", unitType: "quantity", qty: 1, rate: 100, discountPct: 0 }],
   };
 }

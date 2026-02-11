@@ -8,7 +8,7 @@ export default function Page() {
       </div>
       <div className="bd" style={{ display: "grid", gap: 16 }}>
         <p>
-          Create clean invoices quickly with a privacy-first workflow. Your invoice content stays on your device and PDFs
+          Create clean invoices quickly with a privacy-first experience. Your invoice content stays on your device and PDFs
           are generated in-browser.
         </p>
         <ul>

@@ -6,14 +6,14 @@
   --text: rgba(255, 255, 255, 0.9);
   --muted: rgba(255, 255, 255, 0.65);
   --border: rgba(255, 255, 255, 0.16);
-  --accent: #ffd166;
+  --accent: #4f46e5;
   --danger: #ff5d5d;
   --ok: #34d399;
   --blue: #3b82f6;
   --paper: rgba(255, 255, 255, 0.06);
   --shadow: rgba(0, 0, 0, 0.35);
-  --focus: rgba(255, 209, 102, 0.85);
-  --brand-color: #ffd166;
+  --focus: rgba(79, 70, 229, 0.85);
+  --brand-color: #4f46e5;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -99,7 +99,7 @@ a {
   border-radius: var(--radius-sm);
   display: block;
   object-fit: contain;
-  background: linear-gradient(135deg, rgba(255, 209, 102, 0.25), rgba(59, 130, 246, 0.22));
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.25), rgba(59, 130, 246, 0.22));
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: 0 12px 28px var(--shadow);
 }
@@ -942,6 +942,36 @@ th {
   gap: var(--space-3);
 }
 
+.trustBlock .bd {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.trustIcon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  border: 1px solid color-mix(in srgb, var(--brand-color) 55%, white 45%);
+  background: color-mix(in srgb, var(--brand-color) 18%, transparent);
+}
+
+.trustCopy h3 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+
+.trustCopy p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
 .benefitGrid {
   display: grid;
   gap: var(--space-3);
@@ -1061,6 +1091,10 @@ th {
   }
 
   .roleGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .trustBlock .bd {
     grid-template-columns: 1fr;
   }
 }

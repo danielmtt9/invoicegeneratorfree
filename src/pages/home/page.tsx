@@ -28,16 +28,31 @@ export default function Page() {
         </div>
         <div className="bd">
           <p className="homeSubtext">
-            Welcome to a faster invoicing workflow. Build and edit in your browser, keep invoice data local on your
-            device, and download professional PDFs whenever you need them.
+            Create polished invoices in your browser, keep invoice data local on your device, and download
+            professional PDFs whenever you need them.
           </p>
           <div className="homeHeroActions">
             <a className="btn primary" href="/invoice/">
-              Open Invoice Builder
+              Create Your First Invoice
             </a>
             <a className="btn" href="/faq/">
               See how it works
             </a>
+          </div>
+        </div>
+      </section>
+
+      <section className="panel trustBlock">
+        <div className="bd">
+          <div className="trustIcon" aria-hidden="true">
+            🛡
+          </div>
+          <div className="trustCopy">
+            <h3>Your data, your control</h3>
+            <p>
+              Unlike tools that store your invoice details in the cloud, invoice content stays local in your browser.
+              We do not collect your client list, pricing, or invoice line items.
+            </p>
           </div>
         </div>
       </section>
@@ -70,7 +85,7 @@ export default function Page() {
               <a key={role.slug} className="roleCard" href={`/${role.slug}/`}>
                 <strong>{role.label}</strong>
                 <p>{role.outcome}</p>
-                <span>View role-specific workflow</span>
+                <span>View role-specific details</span>
               </a>
             ))}
           </div>
@@ -84,7 +99,7 @@ export default function Page() {
             <p>Start now and create a client-ready PDF in just a few steps.</p>
           </div>
           <a className="btn primary" href="/invoice/">
-            Open Invoice Builder
+            Create Your First Invoice
           </a>
         </div>
       </section>
