@@ -9,14 +9,7 @@ const BENEFITS = [
   "Local draft convenience for repeat invoicing",
 ];
 
-const ROLES = [
-  { slug: "freelancers", label: "Freelancers", outcome: "Send fast, clean invoices after every project milestone." },
-  { slug: "consultants", label: "Consultants", outcome: "Keep billing consistent across retainers and one-off work." },
-  { slug: "contractors", label: "Contractors", outcome: "Invoice labor and materials clearly for every job." },
-  { slug: "designers", label: "Designers", outcome: "Present premium-looking invoices that match your brand." },
-  { slug: "photographers", label: "Photographers", outcome: "Bill shoots, edits, and packages with client-ready clarity." },
-  { slug: "entrepreneurs", label: "Entrepreneurs", outcome: "Stay organized with simple invoicing as your business grows." },
-];
+const PROFESSIONALS = ["Freelancers", "Consultants", "Contractors", "Designers", "Photographers", "Entrepreneurs"];
 
 export default function Page() {
   return (
@@ -77,16 +70,14 @@ export default function Page() {
 
       <section className="panel">
         <div className="hd">
-          <h2>Built for six types of users</h2>
+          <h2>Built for professionals</h2>
         </div>
         <div className="bd">
           <div className="roleGrid">
-            {ROLES.map((role) => (
-              <a key={role.slug} className="roleCard" href={`/${role.slug}/`}>
-                <strong>{role.label}</strong>
-                <p>{role.outcome}</p>
-                <span>View role-specific details</span>
-              </a>
+            {PROFESSIONALS.map((name) => (
+              <article key={name} className="roleCard" aria-label={name}>
+                <strong>{name}</strong>
+              </article>
             ))}
           </div>
         </div>
