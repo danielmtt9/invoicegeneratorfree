@@ -214,7 +214,7 @@ export default function App() {
               <img className="invoiceMiniMark" src="/brand/logo-mark.svg" alt="" aria-hidden="true" />
               <div>
                 <h2>Invoice Builder</h2>
-                <p className="fineMuted">Wise-style structure with clearer spacing and faster data entry.</p>
+                <p className="fineMuted">Structured layout with clear spacing and faster data entry.</p>
               </div>
             </div>
             <div className="actions">
@@ -229,7 +229,7 @@ export default function App() {
           <div className="bd invoiceForm">
             <section className="invoiceSection">
               <div className="sectionTitleRow">
-                <h3 className="sectionTitle">Meta</h3>
+                <h3 className="sectionTitle">Invoice details</h3>
                 <div className="pill">
                   <span>Currency</span>
                   <strong>{draft.currency}</strong>
@@ -538,7 +538,7 @@ export default function App() {
               {"\n"}
               {draft.billTo}
               {"\n\n"}
-              <strong style={{ color: "var(--text)" }}>Meta</strong>
+              <strong style={{ color: "var(--text)" }}>Details</strong>
               {"\n"}
               Invoice: {draft.invoiceNo || "-"}
               {"\n"}
