@@ -17,7 +17,7 @@ export default function Page() {
           <li>Optional Stripe payment link and QR code in PDF</li>
         </ul>
         <p>
-          <a className="btn primary" href="/">
+          <a className="btn primary" href="/invoice/">
             Open Invoice Builder
           </a>
         </p>

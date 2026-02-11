@@ -61,6 +61,20 @@ const LEGACY_LOGO_KEY = "invoice.logoDataUrl";
 const MAX_LOGO_SIZE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_LOGO_TYPES = new Set(["image/png", "image/jpeg"]);
 const UNIT_OPTIONS: UnitType[] = ["hours", "quantity", "service", "fixed_rate"];
+const BRAND_SWATCHES = [
+  "#FFD166",
+  "#2563EB",
+  "#0EA5E9",
+  "#0891B2",
+  "#059669",
+  "#16A34A",
+  "#CA8A04",
+  "#EA580C",
+  "#DC2626",
+  "#BE185D",
+  "#7C3AED",
+  "#475569",
+];
 
 function money(n: number, currency: string) {
   try {
@@ -215,7 +229,7 @@ export default function App() {
   });
   const [logoError, setLogoError] = useState("");
   const [showPrivacyInfo, setShowPrivacyInfo] = useState(false);
-  const [currencyQuery, setCurrencyQuery] = useState("");
+  const [currencyInput, setCurrencyInput] = useState("");
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const saveTimerRef = useRef<number | null>(null);
 
@@ -225,17 +239,11 @@ export default function App() {
     [currencyOptions, draft.currency]
   );
 
-  const filteredCurrencies = useMemo(() => {
-    const q = currencyQuery.trim().toLowerCase();
-    if (!q) return currencyOptions.slice(0, 300);
-    return currencyOptions.filter((c) => c.label.toLowerCase().includes(q)).slice(0, 300);
-  }, [currencyOptions, currencyQuery]);
-
   useEffect(() => {
-    if (!currencyQuery && selectedCurrency) {
-      setCurrencyQuery(selectedCurrency.label);
+    if (selectedCurrency) {
+      setCurrencyInput(selectedCurrency.label);
     }
-  }, [selectedCurrency, currencyQuery]);
+  }, [selectedCurrency]);
 
   useEffect(() => {
     if (!FEATURES.pwa) return;
@@ -353,6 +361,22 @@ export default function App() {
       taxLabel: p.id === "none" ? "Tax" : p.label,
       taxRatePct: p.rate,
     }));
+  }
+
+  function handleCurrencyInput(value: string) {
+    setCurrencyInput(value);
+    const raw = value.trim();
+    if (!raw) return;
+    const byCode = currencyOptions.find((c) => c.code === raw.toUpperCase());
+    if (byCode) {
+      update("currency", byCode.code);
+      return;
+    }
+    const lower = raw.toLowerCase();
+    const byLabel = currencyOptions.find((c) => c.label.toLowerCase() === lower);
+    if (byLabel) {
+      update("currency", byLabel.code);
+    }
   }
 
   function useNextInvoiceNumber() {
@@ -494,29 +518,22 @@ export default function App() {
 
               <div className="row">
                 <div>
-                  <label htmlFor="currencyQuery">Search currency</label>
+                  <label htmlFor="currencySelect">Currency</label>
                   <input
-                    id="currencyQuery"
-                    value={currencyQuery}
-                    onChange={(e) => setCurrencyQuery(e.target.value)}
+                    id="currencySelect"
+                    list="currency-options"
+                    value={currencyInput}
+                    onChange={(e) => handleCurrencyInput(e.target.value)}
+                    onBlur={() => {
+                      if (selectedCurrency) setCurrencyInput(selectedCurrency.label);
+                    }}
                     placeholder="Type USD, EUR, NGN, CAD..."
                   />
-                  <select
-                    aria-label="Select currency"
-                    value={draft.currency}
-                    onChange={(e) => {
-                      const code = e.target.value;
-                      update("currency", code);
-                      const selected = currencyOptions.find((c) => c.code === code);
-                      setCurrencyQuery(selected ? selected.label : code);
-                    }}
-                  >
-                    {filteredCurrencies.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.label}
-                      </option>
+                  <datalist id="currency-options">
+                    {currencyOptions.map((c) => (
+                      <option key={c.code} value={c.label} />
                     ))}
-                  </select>
+                  </datalist>
                 </div>
                 <div>
                   <label htmlFor="paymentTerms">Payment terms</label>
@@ -557,12 +574,23 @@ export default function App() {
                 </div>
                 <div>
                   <label htmlFor="brandColor">Brand color</label>
-                  <input
-                    id="brandColor"
-                    type="color"
-                    value={normalizeBrandColor(draft.brandColor)}
-                    onChange={(e) => update("brandColor", normalizeBrandColor(e.target.value))}
-                  />
+                  <div id="brandColor" className="swatchGrid" role="radiogroup" aria-label="Brand color">
+                    {BRAND_SWATCHES.map((swatch) => {
+                      const selected = normalizeBrandColor(draft.brandColor) === swatch;
+                      return (
+                        <button
+                          key={swatch}
+                          type="button"
+                          className={`swatchBtn${selected ? " selected" : ""}`}
+                          style={{ backgroundColor: swatch }}
+                          onClick={() => update("brandColor", swatch)}
+                          aria-label={`Select ${swatch} brand color`}
+                          aria-checked={selected}
+                          role="radio"
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
@@ -650,8 +678,9 @@ export default function App() {
                       const amount = lineNetAmount(it);
                       return (
                         <tr key={it.id}>
-                          <td>
-                            <input
+                          <td className="descCell">
+                            <textarea
+                              className="itemDescInput"
                               value={it.description}
                               onChange={(e) => updateItem(it.id, { description: e.target.value })}
                               placeholder="Line item description"
@@ -822,68 +851,137 @@ export default function App() {
           </div>
         </section>
 
-        <aside className="panel">
+        <aside className="panel previewPanel">
           <div className="hd">
             <h2>Preview</h2>
           </div>
-          <div className="bd">
-            <div className="previewBrand">
-              <img src="/brand/logo-mark.svg" alt="" aria-hidden="true" />
-              <div>
-                <strong>{draft.invoiceNo || "Untitled"}</strong>
-                <div className="fineMuted">{draft.currency} invoice</div>
+          <div className="bd previewBody">
+            <div className="previewPaper">
+              <div className="previewHeader">
+                <div className="previewHeaderLeft">
+                  {draft.logoDataUrl ? <img className="previewLogo" src={draft.logoDataUrl} alt="Invoice logo preview" /> : null}
+                  <div>
+                    <div className="previewTitle">Invoice</div>
+                    <div className="previewMuted">Invoice No: {draft.invoiceNo || "Untitled"}</div>
+                    <div className="previewMuted">PO No: {draft.poNo || "-"}</div>
+                  </div>
+                </div>
+                <div className="previewMetaBox">
+                  <div className="previewMetaRow">
+                    <span>Issue date</span>
+                    <strong>{draft.issueDate || "-"}</strong>
+                  </div>
+                  <div className="previewMetaRow">
+                    <span>Due date</span>
+                    <strong>{draft.dueDate || "-"}</strong>
+                  </div>
+                  <div className="previewMetaRow">
+                    <span>Currency</span>
+                    <strong>{draft.currency}</strong>
+                  </div>
+                  <div className="previewMetaRow">
+                    <span>Payment terms</span>
+                    <strong>{draft.paymentTerms || "-"}</strong>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div style={{ color: "var(--muted)", fontSize: 13, whiteSpace: "pre-wrap", lineHeight: 1.45 }}>
-              <strong style={{ color: "var(--text)" }}>From</strong>
-              {"\n"}
-              {draft.from}
-              {"\n\n"}
-              <strong style={{ color: "var(--text)" }}>Bill to</strong>
-              {"\n"}
-              {draft.billTo}
-              {"\n\n"}
-              <strong style={{ color: "var(--text)" }}>Details</strong>
-              {"\n"}
-              Invoice: {draft.invoiceNo || "-"}
-              {"\n"}
-              PO: {draft.poNo || "-"}
-              {"\n"}
-              Currency: {draft.currency}
-              {"\n"}
-              Terms: {draft.paymentTerms || "-"}
-              {"\n"}
-              Issue: {draft.issueDate}
-              {"\n"}
-              Due: {draft.dueDate}
-              {"\n\n"}
-              <strong style={{ color: "var(--text)" }}>Totals</strong>
-              {"\n"}
-              Subtotal: {money(totals.subtotal, draft.currency)}
-              {"\n"}
-              {draft.taxLabel || "Tax"}: {money(totals.tax, draft.currency)}
-              {"\n"}
-              Grand total: {money(totals.grandTotal, draft.currency)}
-              {"\n"}
-              Paid: {money(totals.amountPaidApplied, draft.currency)}
-              {"\n"}
-              Balance due: {money(totals.balanceDue, draft.currency)}
-              {"\n\n"}
-              <strong style={{ color: "var(--text)" }}>Bank / payment details</strong>
-              {"\n"}
-              {draft.bankDetails}
-              {"\n\n"}
+
+              <div className="previewPartyGrid">
+                <section className="previewBlock">
+                  <h4>From</h4>
+                  <p>{draft.from || "-"}</p>
+                </section>
+                <section className="previewBlock">
+                  <h4>Bill to</h4>
+                  <p>{draft.billTo || "-"}</p>
+                </section>
+              </div>
+
+              <div className="previewTableWrap">
+                <table className="previewTable">
+                  <thead>
+                    <tr>
+                      <th>Description</th>
+                      <th className="num">Unit</th>
+                      <th className="num">Qty</th>
+                      <th className="num">Rate</th>
+                      <th className="num">Disc %</th>
+                      <th className="num">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {draft.items.map((it) => (
+                      <tr key={`preview-${it.id}`}>
+                        <td className="previewWrap">{it.description || "-"}</td>
+                        <td className="num">{it.unitType || "quantity"}</td>
+                        <td className="num">{it.qty}</td>
+                        <td className="num">{money(it.rate, draft.currency)}</td>
+                        <td className="num">{it.discountPct}</td>
+                        <td className="num">{money(lineNetAmount(it), draft.currency)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="previewTotalsWrap">
+                <div className="previewTotalsBox">
+                  <div className="previewTotalRow">
+                    <span>Line subtotal</span>
+                    <strong>{money(totals.lineSubtotal, draft.currency)}</strong>
+                  </div>
+                  <div className="previewTotalRow">
+                    <span>Line discounts</span>
+                    <strong>-{money(totals.lineDiscountTotal, draft.currency)}</strong>
+                  </div>
+                  <div className="previewTotalRow">
+                    <span>Subtotal</span>
+                    <strong>{money(totals.subtotal, draft.currency)}</strong>
+                  </div>
+                  <div className="previewTotalRow">
+                    <span>Invoice discount</span>
+                    <strong>-{money(totals.invoiceDiscountAmountApplied, draft.currency)}</strong>
+                  </div>
+                  <div className="previewTotalRow">
+                    <span>Shipping</span>
+                    <strong>{money(totals.shippingFeeApplied, draft.currency)}</strong>
+                  </div>
+                  <div className="previewTotalRow">
+                    <span>
+                      {draft.taxLabel || "Tax"} ({Number.isFinite(draft.taxRatePct) ? draft.taxRatePct : 0}%)
+                    </span>
+                    <strong>{money(totals.tax, draft.currency)}</strong>
+                  </div>
+                  <div className="previewTotalRow previewTotalStrong">
+                    <span>Grand total</span>
+                    <strong>{money(totals.grandTotal, draft.currency)}</strong>
+                  </div>
+                  <div className="previewTotalRow">
+                    <span>Amount paid</span>
+                    <strong>{money(totals.amountPaidApplied, draft.currency)}</strong>
+                  </div>
+                  <div className="previewTotalRow previewTotalAccent">
+                    <span>Balance due</span>
+                    <strong>{money(totals.balanceDue, draft.currency)}</strong>
+                  </div>
+                </div>
+              </div>
+
               {draft.paymentLink ? (
-                <>
-                  <strong style={{ color: "var(--text)" }}>Pay online</strong>
-                  {"\n"}
-                  {draft.paymentLink}
-                  {"\n\n"}
-                </>
+                <section className="previewBlock previewPayBlock">
+                  <h4>Pay online</h4>
+                  <p className="previewWrap">{draft.paymentLink}</p>
+                </section>
               ) : null}
-              <strong style={{ color: "var(--text)" }}>Notes</strong>
-              {"\n"}
-              {draft.notes}
+
+              <section className="previewBlock">
+                <h4>Bank / payment details</h4>
+                <p>{draft.bankDetails || "-"}</p>
+              </section>
+              <section className="previewBlock">
+                <h4>Notes</h4>
+                <p>{draft.notes || "-"}</p>
+              </section>
             </div>
           </div>
         </aside>

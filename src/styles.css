@@ -56,7 +56,7 @@ a {
 }
 
 .wrap {
-  max-width: 1320px;
+  max-width: 1440px;
   margin: 0 auto;
   padding: var(--space-7) var(--space-5) 52px;
 }
@@ -77,7 +77,7 @@ a {
 }
 
 .hdrInner {
-  max-width: 1320px;
+  max-width: 1440px;
   margin: 0 auto;
   padding: var(--space-4) var(--space-5);
   display: flex;
@@ -127,7 +127,7 @@ a {
 }
 
 .container {
-  max-width: 1320px;
+  max-width: 1440px;
   margin: 0 auto;
   padding: var(--space-6) var(--space-5) 44px;
 }
@@ -144,7 +144,7 @@ a {
 }
 
 .ftrInner {
-  max-width: 1320px;
+  max-width: 1440px;
   margin: 0 auto;
   padding: 16px 18px;
   display: flex;
@@ -538,6 +538,7 @@ th {
 .invoiceForm {
   display: grid;
   gap: var(--space-6);
+  font-size: 0.92rem;
 }
 
 .invoiceSection {
@@ -595,8 +596,25 @@ th {
   overflow-x: auto;
 }
 
+.itemsTable {
+  min-width: 940px;
+  table-layout: fixed;
+}
+
 .itemsTable th {
   background: rgba(255, 255, 255, 0.04);
+}
+
+.descCell {
+  text-align: left;
+}
+
+.itemDescInput {
+  min-height: 56px;
+  resize: vertical;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
 }
 
 .itemsActions {
@@ -630,17 +648,194 @@ th {
   color: var(--brand-color);
 }
 
-.previewBrand {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
+.swatchGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-2);
 }
 
-.previewBrand img {
-  width: 34px;
+.swatchBtn {
   height: 34px;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.22);
+}
+
+.swatchBtn.selected {
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35), 0 0 0 4px color-mix(in srgb, var(--brand-color) 65%, white 35%);
+}
+
+.previewPanel .hd h2 {
+  font-size: 15px;
+}
+
+.previewBody {
+  padding: var(--space-5);
+}
+
+.previewPaper {
+  background: rgba(255, 255, 255, 0.96);
+  color: #0b1220;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35);
+  padding: 20px;
+  display: grid;
+  gap: 14px;
+  font-size: 0.92rem;
+}
+
+.previewHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.previewHeaderLeft {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.previewLogo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.previewTitle {
+  margin: 0 0 4px;
+  font-size: 1.32rem;
+  color: var(--brand-color);
+  font-weight: 800;
+}
+
+.previewMuted {
+  color: #5f6b7a;
+  font-size: 0.8rem;
+  line-height: 1.32;
+}
+
+.previewMetaBox {
+  min-width: 210px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.previewMetaRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.79rem;
+}
+
+.previewMetaRow span {
+  color: #6b7280;
+}
+
+.previewPartyGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.previewBlock {
+  border: 1px solid #e5e7eb;
+  border-top: 3px solid var(--brand-color);
+  border-radius: 8px;
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.previewBlock h4 {
+  margin: 0;
+  font-size: 0.74rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.previewBlock p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #0b1220;
+  line-height: 1.35;
+}
+
+.previewPayBlock {
+  border-color: color-mix(in srgb, var(--brand-color) 48%, #d1d5db 52%);
+}
+
+.previewTableWrap {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.previewTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.previewTable th,
+.previewTable td {
+  padding: 8px;
+  font-size: 0.79rem;
+  border-bottom: 1px solid #eef2f7;
+  color: #0b1220;
+}
+
+.previewTable th {
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: #f8fafc;
+}
+
+.previewTotalsWrap {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.previewTotalsBox {
+  width: min(100%, 320px);
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.previewTotalRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: #0b1220;
+}
+
+.previewTotalStrong {
+  font-weight: 700;
+}
+
+.previewTotalAccent {
+  color: var(--brand-color);
+  font-weight: 700;
+}
+
+.previewWrap {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
 }
 
 .privateBadge {
@@ -698,8 +893,77 @@ th {
   letter-spacing: 0.08em;
 }
 
+.homeLayout {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.homeHero .bd {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.homeLead {
+  margin: 0;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.5;
+}
+
+.homeHeroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.roleGrid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.roleCard {
+  display: grid;
+  gap: 6px;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+}
+
+.roleCard strong {
+  font-size: 0.95rem;
+}
+
+.roleCard span {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
 @media (max-width: 900px) {
   .fieldActionRow {
+    grid-template-columns: 1fr;
+  }
+
+  .swatchGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .previewHeader {
+    flex-direction: column;
+  }
+
+  .previewMetaBox {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .previewPartyGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .roleGrid {
     grid-template-columns: 1fr;
   }
 }

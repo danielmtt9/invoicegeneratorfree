@@ -32,6 +32,7 @@ export function SiteLayout(props: { title: string; children: React.ReactNode; sh
           <nav className="nav">
             {props.showNavHome !== false && (
               <>
+                <A href="/invoice/">Invoice Builder</A>
                 <A href="/faq/">FAQ</A>
                 <A href="/privacy/">Privacy</A>
                 <A href="/cookies/">Cookies</A>

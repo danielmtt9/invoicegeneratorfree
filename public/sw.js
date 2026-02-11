@@ -1,5 +1,14 @@
 const CACHE_VERSION = "ig-cache-v1";
-const APP_SHELL = ["/", "/index.html", "/manifest.webmanifest", "/favicon.svg", "/robots.txt", "/sitemap.xml"];
+const APP_SHELL = [
+  "/",
+  "/index.html",
+  "/invoice/",
+  "/invoice/index.html",
+  "/manifest.webmanifest",
+  "/favicon.svg",
+  "/robots.txt",
+  "/sitemap.xml"
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -26,7 +35,15 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (event.request.mode === "navigate") {
-    event.respondWith(fetch(event.request).catch(() => caches.match("/index.html")));
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        const path = url.pathname;
+        if (path.startsWith("/invoice")) {
+          return caches.match("/invoice/index.html").then((m) => m || caches.match("/index.html"));
+        }
+        return caches.match("/index.html");
+      })
+    );
     return;
   }
 
