@@ -1,0 +1,6 @@
+# Protect the admin APIs with the same Basic Auth as /admin/.
+AuthType Basic
+AuthName "Invoice Generator Admin API"
+AuthUserFile /home/your_user/.htpasswd
+# Username suggestion: admin@invoicegenerator.cloud
+Require valid-user

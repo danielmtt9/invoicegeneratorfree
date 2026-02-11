@@ -1,0 +1,11 @@
+# Protect this directory with Basic Auth.
+AuthType Basic
+AuthName "Invoice Generator Admin"
+
+# IMPORTANT (Hostinger): set this to an absolute path where you put the .htpasswd file.
+# Example:
+# AuthUserFile /home/your_user/.htpasswd
+AuthUserFile /home/your_user/.htpasswd
+
+# Username suggestion: admin@invoicegenerator.cloud
+Require valid-user
