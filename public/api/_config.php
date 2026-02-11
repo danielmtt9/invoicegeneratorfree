@@ -25,8 +25,8 @@ return [
 
   'DB' => [
     'host' => 'localhost',
-    'name' => 'invoicefree',
-    'user' => 'invoicefree_user',
+    'name' => 'u746391188_invoice',
+    'user' => 'u746391188_invoice',
     'pass' => 'CHANGE_ME_DB_PASSWORD',
     'charset' => 'utf8mb4',
   ],

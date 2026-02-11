@@ -68,6 +68,20 @@ Set:
 - `DB.pass`
 - `IP_HASH_SALT` (random string)
 
+For your current deployment values:
+
+```php
+'SITE_HOST' => 'invoicegenerator.cloud',
+'IP_HASH_SALT' => 'REPLACE_WITH_RANDOM_SECRET',
+'DB' => [
+  'host' => 'localhost',
+  'name' => 'u746391188_invoice',
+  'user' => 'u746391188_invoice',
+  'pass' => 'REPLACE_WITH_DB_PASSWORD',
+  'charset' => 'utf8mb4',
+],
+```
+
 Host allowlist:
 - Set `SITE_HOST` to your canonical host (recommended), OR
 - Set `SITE_HOSTS` to allow both `example.com` and `www.example.com` if you haven’t set redirects yet.
@@ -122,4 +136,3 @@ curl -fsS -u "admin@invoicegenerator.cloud:YOUR_PASSWORD" "https://example.com/a
 2. `https://example.com/admin/` prompts for Basic Auth
 3. `https://example.com/admin-api/summary.php` prompts for Basic Auth and returns JSON after login
 4. Events show up in the `events` table after browsing the site
-
