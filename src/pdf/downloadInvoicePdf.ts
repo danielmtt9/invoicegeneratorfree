@@ -1,4 +1,5 @@
 import React from "react";
+import QRCode from "qrcode";
 import type { InvoicePdfDraft } from "./types";
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -12,12 +13,31 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+function isHttpUrl(value: string): boolean {
+  try {
+    const u = new URL(value);
+    return u.protocol === "https:" || u.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
 export async function downloadInvoicePdf(draft: InvoicePdfDraft) {
-  // Lazy-load the heavy PDF renderer only when needed to keep initial bundle small.
+  let qrDataUrl: string | undefined;
+  const paymentLink = (draft.paymentLink || "").trim();
+  if (paymentLink && isHttpUrl(paymentLink)) {
+    try {
+      qrDataUrl = await QRCode.toDataURL(paymentLink, { width: 180, margin: 1 });
+    } catch {
+      qrDataUrl = undefined;
+    }
+  }
+
   const [{ pdf }, { InvoicePdf }] = await Promise.all([import("@react-pdf/renderer"), import("./InvoicePdf")]);
-  // @react-pdf/renderer types expect a <Document/> element; our component returns <Document/>.
-  // Cast to keep the call site simple.
-  const element = React.createElement(InvoicePdf as unknown as React.FC<{ draft: InvoicePdfDraft }>, { draft }) as any;
+  const element = React.createElement(
+    InvoicePdf as unknown as React.FC<{ draft: InvoicePdfDraft }>,
+    { draft: { ...draft, qrDataUrl } }
+  ) as any;
   const blob = await pdf(element).toBlob();
   const name = (draft.invoiceNo || "invoice").replace(/[^a-zA-Z0-9._-]+/g, "-");
   downloadBlob(blob, `${name}.pdf`);

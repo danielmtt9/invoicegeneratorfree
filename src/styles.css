@@ -13,6 +13,7 @@
   --paper: rgba(255, 255, 255, 0.06);
   --shadow: rgba(0, 0, 0, 0.35);
   --focus: rgba(255, 209, 102, 0.85);
+  --brand-color: #ffd166;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -205,8 +206,12 @@ a {
 }
 
 .btn.primary {
-  border-color: rgba(255, 209, 102, 0.5);
-  background: linear-gradient(180deg, rgba(255, 209, 102, 0.18), rgba(255, 209, 102, 0.08));
+  border-color: color-mix(in srgb, var(--brand-color) 55%, white 45%);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--brand-color) 22%, transparent),
+    color-mix(in srgb, var(--brand-color) 10%, transparent)
+  );
 }
 
 .btn.ok {
@@ -221,7 +226,7 @@ a {
 }
 
 .link:hover {
-  border-bottom-color: rgba(255, 209, 102, 0.55);
+  border-bottom-color: color-mix(in srgb, var(--brand-color) 55%, white 45%);
 }
 
 .linkBtn {
@@ -236,7 +241,7 @@ a {
 }
 
 .linkBtn:hover {
-  border-bottom-color: rgba(255, 209, 102, 0.55);
+  border-bottom-color: color-mix(in srgb, var(--brand-color) 55%, white 45%);
 }
 
 .fine {
@@ -496,7 +501,7 @@ th {
 }
 
 .totalRow strong {
-  color: var(--accent);
+  color: var(--brand-color);
 }
 
 .danger {
@@ -561,7 +566,7 @@ th {
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.84);
+  color: color-mix(in srgb, var(--brand-color) 75%, white 25%);
 }
 
 .logoPreviewRow {
@@ -622,7 +627,7 @@ th {
 }
 
 .totalAccentRow strong {
-  color: var(--accent);
+  color: var(--brand-color);
 }
 
 .previewBrand {
@@ -636,4 +641,65 @@ th {
   width: 34px;
   height: 34px;
   border-radius: 9px;
+}
+
+.privateBadge {
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.privateBadge strong {
+  color: var(--brand-color);
+}
+
+.privateBadge .linkBtn {
+  border-bottom-color: color-mix(in srgb, var(--brand-color) 45%, white 55%);
+}
+
+.fieldActionRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.fieldActionRow .btn {
+  white-space: nowrap;
+}
+
+.totalsInputs {
+  align-content: start;
+}
+
+.totalsSummary {
+  align-content: start;
+}
+
+.template-minimalist .panel {
+  border-radius: var(--radius-md);
+}
+
+.template-creative .panel {
+  border-radius: var(--radius-lg);
+  border-style: dashed;
+}
+
+.template-creative .sectionTitle {
+  letter-spacing: 0.14em;
+}
+
+.template-traditional .panel {
+  border-radius: 8px;
+  border-width: 2px;
+}
+
+.template-traditional .sectionTitle {
+  letter-spacing: 0.08em;
+}
+
+@media (max-width: 900px) {
+  .fieldActionRow {
+    grid-template-columns: 1fr;
+  }
 }

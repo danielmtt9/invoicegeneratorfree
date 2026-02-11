@@ -1,4 +1,4 @@
-export type CurrencyCode = "USD" | "EUR" | "GBP" | "CAD" | "AUD" | "INR" | "JPY";
+export type TemplateId = "minimalist" | "creative" | "traditional";
 
 export type InvoicePdfDraft = {
   invoiceNo: string;
@@ -10,11 +10,17 @@ export type InvoicePdfDraft = {
   billTo: string;
   notes: string;
   bankDetails: string;
-  currency: CurrencyCode;
+  currency: string;
   taxRatePct: number;
+  taxLabel: string;
+  taxPresetId: string;
   invoiceDiscountAmount: number;
   shippingFee: number;
   amountPaid: number;
   logoDataUrl: string;
-  items: Array<{ description: string; qty: number; rate: number; discountPct: number }>;
+  paymentLink: string;
+  qrDataUrl?: string;
+  templateId: TemplateId;
+  brandColor: string;
+  items: Array<{ description: string; qty: number; rate: number; discountPct: number; unitType: string }>;
 };

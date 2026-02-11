@@ -1,12 +1,19 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { downloadInvoicePdf } from "./pdf/downloadInvoicePdf";
-import type { CurrencyCode } from "./pdf/types";
+import type { TemplateId } from "./pdf/types";
 import { track } from "./lib/track";
 import { calcTotals } from "./lib/invoiceMath";
+import { getCurrencyOptions } from "./lib/currencies";
+import { TAX_PRESETS, getTaxPresetById } from "./lib/taxPresets";
+import { suggestNextInvoiceNo } from "./lib/invoiceNumber";
+import { FEATURES } from "./shared/features";
+
+type UnitType = "hours" | "quantity" | "service" | "fixed_rate";
 
 type LineItem = {
   id: string;
   description: string;
+  unitType: UnitType;
   qty: number;
   rate: number;
   discountPct: number;
@@ -22,22 +29,45 @@ type InvoiceDraft = {
   billTo: string;
   notes: string;
   bankDetails: string;
-  currency: CurrencyCode;
+  currency: string;
   taxRatePct: number;
+  taxPresetId: string;
+  taxLabel: string;
   invoiceDiscountAmount: number;
   shippingFee: number;
   amountPaid: number;
   logoDataUrl: string;
+  paymentLink: string;
+  templateId: TemplateId;
+  brandColor: string;
   items: LineItem[];
 };
 
-const CURRENCIES: CurrencyCode[] = ["USD", "EUR", "GBP", "CAD", "AUD", "INR", "JPY"];
-const LOGO_STORAGE_KEY = "invoice.logoDataUrl";
+type DraftEnvelope = {
+  version: 1;
+  savedAt: string;
+  draft: InvoiceDraft;
+};
+
+type SequenceEnvelope = {
+  version: 1;
+  lastInvoiceNo: string;
+  nextInvoiceNo: string;
+};
+
+const DRAFT_STORAGE_KEY = "invoice.draft.v1";
+const SEQUENCE_STORAGE_KEY = "invoice.sequence.v1";
+const LEGACY_LOGO_KEY = "invoice.logoDataUrl";
 const MAX_LOGO_SIZE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_LOGO_TYPES = new Set(["image/png", "image/jpeg"]);
+const UNIT_OPTIONS: UnitType[] = ["hours", "quantity", "service", "fixed_rate"];
 
-function money(n: number, currency: CurrencyCode) {
-  return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(n);
+function money(n: number, currency: string) {
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(n);
+  } catch {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(n);
+  }
 }
 
 function todayISO() {
@@ -52,9 +82,14 @@ function uid() {
   return Math.random().toString(16).slice(2) + Date.now().toString(16);
 }
 
-function createDefaultDraft(logoDataUrl = ""): InvoiceDraft {
+function normalizeBrandColor(value: string): string {
+  const v = (value || "").trim();
+  return /^#[0-9a-fA-F]{6}$/.test(v) ? v : "#FFD166";
+}
+
+function createDefaultDraft(invoiceNo = "INV-0001", logoDataUrl = ""): InvoiceDraft {
   return {
-    invoiceNo: "INV-0001",
+    invoiceNo,
     poNo: "",
     issueDate: todayISO(),
     dueDate: todayISO(),
@@ -65,20 +100,90 @@ function createDefaultDraft(logoDataUrl = ""): InvoiceDraft {
     bankDetails: "Bank name\nAccount name\nAccount number / IBAN\nRouting / SWIFT",
     currency: "USD",
     taxRatePct: 0,
+    taxPresetId: "none",
+    taxLabel: "Tax",
     invoiceDiscountAmount: 0,
     shippingFee: 0,
     amountPaid: 0,
     logoDataUrl,
-    items: [{ id: uid(), description: "Service or product", qty: 1, rate: 100, discountPct: 0 }],
+    paymentLink: "",
+    templateId: "minimalist",
+    brandColor: "#FFD166",
+    items: [{ id: uid(), description: "Service or product", unitType: "quantity", qty: 1, rate: 100, discountPct: 0 }],
   };
 }
 
-function loadStoredLogo() {
+function sanitizeDraft(raw: unknown): InvoiceDraft | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Partial<InvoiceDraft>;
+  const base = createDefaultDraft(r.invoiceNo || "INV-0001", typeof r.logoDataUrl === "string" ? r.logoDataUrl : "");
+  const itemsRaw = Array.isArray(r.items) ? r.items : base.items;
+  const items = itemsRaw.map((it) => {
+    const x = it as Partial<LineItem>;
+    return {
+      id: typeof x.id === "string" && x.id ? x.id : uid(),
+      description: typeof x.description === "string" ? x.description : "",
+      unitType: UNIT_OPTIONS.includes((x.unitType as UnitType) || "quantity") ? (x.unitType as UnitType) : "quantity",
+      qty: Number.isFinite(Number(x.qty)) ? Number(x.qty) : 0,
+      rate: Number.isFinite(Number(x.rate)) ? Number(x.rate) : 0,
+      discountPct: Number.isFinite(Number(x.discountPct)) ? Number(x.discountPct) : 0,
+    };
+  });
+  return {
+    ...base,
+    ...r,
+    brandColor: normalizeBrandColor(typeof r.brandColor === "string" ? r.brandColor : base.brandColor),
+    currency: typeof r.currency === "string" ? r.currency : base.currency,
+    taxPresetId: typeof r.taxPresetId === "string" ? r.taxPresetId : base.taxPresetId,
+    taxLabel: typeof r.taxLabel === "string" ? r.taxLabel : base.taxLabel,
+    paymentLink: typeof r.paymentLink === "string" ? r.paymentLink : "",
+    templateId: (r.templateId as TemplateId) || "minimalist",
+    items: items.length ? items : base.items,
+  };
+}
+
+function loadPersistedDraft(): InvoiceDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<DraftEnvelope>;
+    if (parsed.version !== 1 || !parsed.draft) return null;
+    return sanitizeDraft(parsed.draft);
+  } catch {
+    return null;
+  }
+}
+
+function loadLegacyLogo(): string {
   if (typeof window === "undefined") return "";
   try {
-    return window.localStorage.getItem(LOGO_STORAGE_KEY) || "";
+    return window.localStorage.getItem(LEGACY_LOGO_KEY) || "";
   } catch {
     return "";
+  }
+}
+
+function loadSequence(): SequenceEnvelope | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(SEQUENCE_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<SequenceEnvelope>;
+    if (parsed.version !== 1) return null;
+    if (typeof parsed.nextInvoiceNo !== "string" || typeof parsed.lastInvoiceNo !== "string") return null;
+    return parsed as SequenceEnvelope;
+  } catch {
+    return null;
+  }
+}
+
+function saveSequence(seq: SequenceEnvelope) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(SEQUENCE_STORAGE_KEY, JSON.stringify(seq));
+  } catch {
+    // ignore
   }
 }
 
@@ -91,9 +196,80 @@ function lineNetAmount(item: LineItem) {
   return base - base * (discountPct / 100);
 }
 
+function isHttpUrl(value: string): boolean {
+  try {
+    const u = new URL(value);
+    return u.protocol === "https:" || u.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
 export default function App() {
-  const [draft, setDraft] = useState<InvoiceDraft>(() => createDefaultDraft(loadStoredLogo()));
+  const initialSequence = useMemo(() => loadSequence(), []);
+  const [draft, setDraft] = useState<InvoiceDraft>(() => {
+    const restored = loadPersistedDraft();
+    if (restored) return restored;
+    const logo = loadLegacyLogo();
+    return createDefaultDraft(initialSequence?.nextInvoiceNo || "INV-0001", logo);
+  });
   const [logoError, setLogoError] = useState("");
+  const [showPrivacyInfo, setShowPrivacyInfo] = useState(false);
+  const [currencyQuery, setCurrencyQuery] = useState("");
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const saveTimerRef = useRef<number | null>(null);
+
+  const currencyOptions = useMemo(() => getCurrencyOptions(), []);
+  const selectedCurrency = useMemo(
+    () => currencyOptions.find((c) => c.code === draft.currency) || null,
+    [currencyOptions, draft.currency]
+  );
+
+  const filteredCurrencies = useMemo(() => {
+    const q = currencyQuery.trim().toLowerCase();
+    if (!q) return currencyOptions.slice(0, 300);
+    return currencyOptions.filter((c) => c.label.toLowerCase().includes(q)).slice(0, 300);
+  }, [currencyOptions, currencyQuery]);
+
+  useEffect(() => {
+    if (!currencyQuery && selectedCurrency) {
+      setCurrencyQuery(selectedCurrency.label);
+    }
+  }, [selectedCurrency, currencyQuery]);
+
+  useEffect(() => {
+    if (!FEATURES.pwa) return;
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e as any);
+    };
+    window.addEventListener("beforeinstallprompt", handler as EventListener);
+    return () => window.removeEventListener("beforeinstallprompt", handler as EventListener);
+  }, []);
+
+  useEffect(() => {
+    if (saveTimerRef.current) {
+      window.clearTimeout(saveTimerRef.current);
+    }
+    saveTimerRef.current = window.setTimeout(() => {
+      const payload: DraftEnvelope = {
+        version: 1,
+        savedAt: new Date().toISOString(),
+        draft,
+      };
+      try {
+        window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
+      } catch {
+        // ignore storage errors
+      }
+    }, 400);
+
+    return () => {
+      if (saveTimerRef.current) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, [draft]);
 
   const totals = useMemo(
     () =>
@@ -121,7 +297,7 @@ export default function App() {
   function addItem() {
     setDraft((d) => ({
       ...d,
-      items: [...d.items, { id: uid(), description: "", qty: 1, rate: 0, discountPct: 0 }],
+      items: [...d.items, { id: uid(), description: "", unitType: "quantity", qty: 1, rate: 0, discountPct: 0 }],
     }));
   }
 
@@ -130,11 +306,6 @@ export default function App() {
   }
 
   function clearLogo() {
-    try {
-      window.localStorage.removeItem(LOGO_STORAGE_KEY);
-    } catch {
-      // Ignore storage failures; keep in-memory state consistent.
-    }
     setDraft((d) => ({ ...d, logoDataUrl: "" }));
     setLogoError("");
   }
@@ -169,16 +340,42 @@ export default function App() {
       return;
     }
 
-    try {
-      window.localStorage.setItem(LOGO_STORAGE_KEY, dataUrl);
-    } catch {
-      // Keep working even if storage is unavailable.
-    }
     setDraft((d) => ({ ...d, logoDataUrl: dataUrl }));
     setLogoError("");
   }
 
+  function applyTaxPreset(id: string) {
+    const p = getTaxPresetById(id);
+    if (!p) return;
+    setDraft((d) => ({
+      ...d,
+      taxPresetId: p.id,
+      taxLabel: p.id === "none" ? "Tax" : p.label,
+      taxRatePct: p.rate,
+    }));
+  }
+
+  function useNextInvoiceNumber() {
+    update("invoiceNo", suggestNextInvoiceNo(draft.invoiceNo));
+  }
+
+  async function installPwa() {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    try {
+      await installPrompt.userChoice;
+    } finally {
+      setInstallPrompt(null);
+    }
+  }
+
   async function downloadPDF() {
+    const paymentLink = draft.paymentLink.trim();
+    if (paymentLink && !isHttpUrl(paymentLink)) {
+      alert("Payment link must be a valid http(s) URL.");
+      return;
+    }
+
     await downloadInvoicePdf({
       invoiceNo: draft.invoiceNo,
       poNo: draft.poNo,
@@ -191,22 +388,45 @@ export default function App() {
       bankDetails: draft.bankDetails,
       currency: draft.currency,
       taxRatePct: draft.taxRatePct,
+      taxPresetId: draft.taxPresetId,
+      taxLabel: draft.taxLabel,
       invoiceDiscountAmount: draft.invoiceDiscountAmount,
       shippingFee: draft.shippingFee,
       amountPaid: draft.amountPaid,
       logoDataUrl: draft.logoDataUrl,
+      paymentLink: paymentLink,
+      templateId: draft.templateId,
+      brandColor: normalizeBrandColor(draft.brandColor),
       items: draft.items,
     });
+
+    const next = suggestNextInvoiceNo(draft.invoiceNo);
+    const seq: SequenceEnvelope = { version: 1, lastInvoiceNo: draft.invoiceNo, nextInvoiceNo: next };
+    saveSequence(seq);
+    setDraft((d) => ({ ...d, invoiceNo: next }));
     void track("invoice_pdf_download", { items: draft.items.length });
   }
 
   function reset() {
-    clearLogo();
-    setDraft(createDefaultDraft());
+    const seq = loadSequence();
+    setDraft(createDefaultDraft(seq?.nextInvoiceNo || "INV-0001", ""));
+    setLogoError("");
+  }
+
+  function clearLocalData() {
+    try {
+      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+      window.localStorage.removeItem(SEQUENCE_STORAGE_KEY);
+      window.localStorage.removeItem(LEGACY_LOGO_KEY);
+    } catch {
+      // ignore
+    }
+    setDraft(createDefaultDraft("INV-0001", ""));
+    setLogoError("");
   }
 
   return (
-    <div>
+    <div className={`template-${draft.templateId}`} style={{ ["--brand-color" as any]: normalizeBrandColor(draft.brandColor) }}>
       <div className="grid">
         <section className="panel">
           <div className="hd invoiceHd">
@@ -218,8 +438,23 @@ export default function App() {
               </div>
             </div>
             <div className="actions">
+              <span className="pill privateBadge" role="status" aria-live="polite">
+                <strong>Private</strong>
+                <span>Invoice data stays local</span>
+                <button className="linkBtn" type="button" onClick={() => setShowPrivacyInfo(true)}>
+                  Learn more
+                </button>
+              </span>
+              {FEATURES.pwa && installPrompt ? (
+                <button className="btn" onClick={() => void installPwa()} type="button">
+                  Install app
+                </button>
+              ) : null}
               <button className="btn" onClick={reset} type="button">
                 Reset
+              </button>
+              <button className="btn" onClick={clearLocalData} type="button">
+                Clear local data
               </button>
               <button className="btn primary" onClick={() => void downloadPDF()} type="button">
                 Download PDF
@@ -239,12 +474,17 @@ export default function App() {
               <div className="row">
                 <div>
                   <label htmlFor="invoiceNo">Invoice No.</label>
-                  <input
-                    id="invoiceNo"
-                    value={draft.invoiceNo}
-                    onChange={(e) => update("invoiceNo", e.target.value)}
-                    placeholder="INV-0001"
-                  />
+                  <div className="fieldActionRow">
+                    <input
+                      id="invoiceNo"
+                      value={draft.invoiceNo}
+                      onChange={(e) => update("invoiceNo", e.target.value)}
+                      placeholder="INV-0001"
+                    />
+                    <button className="btn" type="button" onClick={useNextInvoiceNumber}>
+                      Use next
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label htmlFor="poNo">PO number</label>
@@ -254,15 +494,26 @@ export default function App() {
 
               <div className="row">
                 <div>
-                  <label htmlFor="currency">Currency</label>
+                  <label htmlFor="currencyQuery">Search currency</label>
+                  <input
+                    id="currencyQuery"
+                    value={currencyQuery}
+                    onChange={(e) => setCurrencyQuery(e.target.value)}
+                    placeholder="Type USD, EUR, NGN, CAD..."
+                  />
                   <select
-                    id="currency"
+                    aria-label="Select currency"
                     value={draft.currency}
-                    onChange={(e) => update("currency", e.target.value as CurrencyCode)}
+                    onChange={(e) => {
+                      const code = e.target.value;
+                      update("currency", code);
+                      const selected = currencyOptions.find((c) => c.code === code);
+                      setCurrencyQuery(selected ? selected.label : code);
+                    }}
                   >
-                    {CURRENCIES.map((code) => (
-                      <option key={code} value={code}>
-                        {code}
+                    {filteredCurrencies.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.label}
                       </option>
                     ))}
                   </select>
@@ -297,6 +548,26 @@ export default function App() {
 
               <div className="row">
                 <div>
+                  <label htmlFor="templateId">Template</label>
+                  <select id="templateId" value={draft.templateId} onChange={(e) => update("templateId", e.target.value as TemplateId)}>
+                    <option value="minimalist">Minimalist</option>
+                    <option value="creative">Creative</option>
+                    <option value="traditional">Traditional</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="brandColor">Brand color</label>
+                  <input
+                    id="brandColor"
+                    type="color"
+                    value={normalizeBrandColor(draft.brandColor)}
+                    onChange={(e) => update("brandColor", normalizeBrandColor(e.target.value))}
+                  />
+                </div>
+              </div>
+
+              <div className="row">
+                <div>
                   <label htmlFor="logo">Logo</label>
                   <input
                     id="logo"
@@ -318,9 +589,17 @@ export default function App() {
                     </div>
                   ) : null}
                 </div>
-                <div className="pill pillTall">
-                  <span>PDF export</span>
-                  <strong>Ready</strong>
+                <div>
+                  <label htmlFor="paymentLink">Stripe payment link (optional)</label>
+                  <input
+                    id="paymentLink"
+                    value={draft.paymentLink}
+                    onChange={(e) => update("paymentLink", e.target.value)}
+                    placeholder="https://buy.stripe.com/..."
+                  />
+                  {draft.paymentLink && !isHttpUrl(draft.paymentLink) ? (
+                    <div className="fineMuted">Enter a valid http(s) URL.</div>
+                  ) : null}
                 </div>
               </div>
             </section>
@@ -345,19 +624,22 @@ export default function App() {
                 <table className="itemsTable">
                   <thead>
                     <tr>
-                      <th scope="col" style={{ width: "44%" }}>
+                      <th scope="col" style={{ width: "40%" }}>
                         Description
                       </th>
-                      <th scope="col" className="num" style={{ width: "9%" }}>
+                      <th scope="col" style={{ width: "12%" }}>
+                        Unit
+                      </th>
+                      <th scope="col" className="num" style={{ width: "8%" }}>
                         Qty
                       </th>
                       <th scope="col" className="num" style={{ width: "12%" }}>
                         Rate
                       </th>
-                      <th scope="col" className="num" style={{ width: "11%" }}>
+                      <th scope="col" className="num" style={{ width: "10%" }}>
                         Disc %
                       </th>
-                      <th scope="col" className="num" style={{ width: "14%" }}>
+                      <th scope="col" className="num" style={{ width: "12%" }}>
                         Amount
                       </th>
                       <th scope="col" />
@@ -374,6 +656,15 @@ export default function App() {
                               onChange={(e) => updateItem(it.id, { description: e.target.value })}
                               placeholder="Line item description"
                             />
+                          </td>
+                          <td>
+                            <select value={it.unitType} onChange={(e) => updateItem(it.id, { unitType: e.target.value as UnitType })}>
+                              {UNIT_OPTIONS.map((u) => (
+                                <option key={u} value={u}>
+                                  {u}
+                                </option>
+                              ))}
+                            </select>
                           </td>
                           <td className="num">
                             <input
@@ -413,7 +704,7 @@ export default function App() {
                 <button className="btn" onClick={addItem} type="button">
                   Add item
                 </button>
-                <span className="pill">Line discounts are percent-based.</span>
+                <span className="pill">Choose unit per line: hours, quantity, service, or fixed rate.</span>
               </div>
             </section>
 
@@ -436,6 +727,20 @@ export default function App() {
 
               <div className="row totalsRowWrap">
                 <div className="totals totalsInputs">
+                  <div>
+                    <label htmlFor="taxPreset">Tax preset</label>
+                    <select id="taxPreset" value={draft.taxPresetId} onChange={(e) => applyTaxPreset(e.target.value)}>
+                      {TAX_PRESETS.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.label} ({p.rate}%)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="taxLabel">Tax label</label>
+                    <input id="taxLabel" value={draft.taxLabel} onChange={(e) => update("taxLabel", e.target.value)} />
+                  </div>
                   <div>
                     <label htmlFor="taxRatePct">Tax rate (%)</label>
                     <input
@@ -496,7 +801,7 @@ export default function App() {
                     <span>{money(totals.shippingFeeApplied, draft.currency)}</span>
                   </div>
                   <div className="totalRow">
-                    <span>Tax</span>
+                    <span>{draft.taxLabel || "Tax"}</span>
                     <span>{money(totals.tax, draft.currency)}</span>
                   </div>
                   <div className="totalRow totalStrongRow">
@@ -556,7 +861,7 @@ export default function App() {
               {"\n"}
               Subtotal: {money(totals.subtotal, draft.currency)}
               {"\n"}
-              Tax: {money(totals.tax, draft.currency)}
+              {draft.taxLabel || "Tax"}: {money(totals.tax, draft.currency)}
               {"\n"}
               Grand total: {money(totals.grandTotal, draft.currency)}
               {"\n"}
@@ -568,6 +873,14 @@ export default function App() {
               {"\n"}
               {draft.bankDetails}
               {"\n\n"}
+              {draft.paymentLink ? (
+                <>
+                  <strong style={{ color: "var(--text)" }}>Pay online</strong>
+                  {"\n"}
+                  {draft.paymentLink}
+                  {"\n\n"}
+                </>
+              ) : null}
               <strong style={{ color: "var(--text)" }}>Notes</strong>
               {"\n"}
               {draft.notes}
@@ -575,6 +888,25 @@ export default function App() {
           </div>
         </aside>
       </div>
+
+      {showPrivacyInfo ? (
+        <div className="modalBackdrop" role="dialog" aria-modal="true" aria-label="Privacy info">
+          <div className="modalCard">
+            <div className="modalHd">
+              <div className="modalTitle">Privacy-first invoice generation</div>
+              <button className="iconBtn" type="button" onClick={() => setShowPrivacyInfo(false)} aria-label="Close">
+                ×
+              </button>
+            </div>
+            <div className="modalBd">
+              <p className="fine" style={{ marginTop: 0 }}>
+                Invoice content stays on your device. We do not upload invoice fields to our server. Analytics is optional
+                and does not include invoice line-item content.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
