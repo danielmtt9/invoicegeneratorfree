@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { downloadInvoicePdf } from "./pdf/downloadInvoicePdf";
+import type { CurrencyCode } from "./pdf/types";
 import { track } from "./lib/track";
 import { calcTotals } from "./lib/invoiceMath";
 
@@ -8,21 +9,35 @@ type LineItem = {
   description: string;
   qty: number;
   rate: number;
+  discountPct: number;
 };
 
 type InvoiceDraft = {
   invoiceNo: string;
+  poNo: string;
   issueDate: string;
   dueDate: string;
+  paymentTerms: string;
   from: string;
   billTo: string;
   notes: string;
+  bankDetails: string;
+  currency: CurrencyCode;
   taxRatePct: number;
+  invoiceDiscountAmount: number;
+  shippingFee: number;
+  amountPaid: number;
+  logoDataUrl: string;
   items: LineItem[];
 };
 
-function money(n: number) {
-  return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(n);
+const CURRENCIES: CurrencyCode[] = ["USD", "EUR", "GBP", "CAD", "AUD", "INR", "JPY"];
+const LOGO_STORAGE_KEY = "invoice.logoDataUrl";
+const MAX_LOGO_SIZE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_LOGO_TYPES = new Set(["image/png", "image/jpeg"]);
+
+function money(n: number, currency: CurrencyCode) {
+  return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(n);
 }
 
 function todayISO() {
@@ -37,24 +52,60 @@ function uid() {
   return Math.random().toString(16).slice(2) + Date.now().toString(16);
 }
 
-export default function App() {
-  const [draft, setDraft] = useState<InvoiceDraft>(() => ({
+function createDefaultDraft(logoDataUrl = ""): InvoiceDraft {
+  return {
     invoiceNo: "INV-0001",
+    poNo: "",
     issueDate: todayISO(),
     dueDate: todayISO(),
+    paymentTerms: "Payment due within 15 days",
     from: "Your Company\nStreet\nCity, State ZIP",
     billTo: "Client Name\nStreet\nCity, State ZIP",
     notes: "Thanks for your business.",
+    bankDetails: "Bank name\nAccount name\nAccount number / IBAN\nRouting / SWIFT",
+    currency: "USD",
     taxRatePct: 0,
-    items: [
-      { id: uid(), description: "Service or product", qty: 1, rate: 100 }
-    ]
-  }));
+    invoiceDiscountAmount: 0,
+    shippingFee: 0,
+    amountPaid: 0,
+    logoDataUrl,
+    items: [{ id: uid(), description: "Service or product", qty: 1, rate: 100, discountPct: 0 }],
+  };
+}
 
-  const totals = useMemo(() => calcTotals(draft.items, draft.taxRatePct), [draft.items, draft.taxRatePct]);
-  const subtotal = totals.subtotal;
-  const tax = totals.tax;
-  const total = totals.total;
+function loadStoredLogo() {
+  if (typeof window === "undefined") return "";
+  try {
+    return window.localStorage.getItem(LOGO_STORAGE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function lineNetAmount(item: LineItem) {
+  const qty = Number.isFinite(item.qty) ? item.qty : 0;
+  const rate = Number.isFinite(item.rate) ? item.rate : 0;
+  const discountPctRaw = Number.isFinite(item.discountPct) ? item.discountPct : 0;
+  const discountPct = Math.min(100, Math.max(0, discountPctRaw));
+  const base = qty * rate;
+  return base - base * (discountPct / 100);
+}
+
+export default function App() {
+  const [draft, setDraft] = useState<InvoiceDraft>(() => createDefaultDraft(loadStoredLogo()));
+  const [logoError, setLogoError] = useState("");
+
+  const totals = useMemo(
+    () =>
+      calcTotals({
+        items: draft.items,
+        taxRatePct: draft.taxRatePct,
+        invoiceDiscountAmount: draft.invoiceDiscountAmount,
+        shippingFee: draft.shippingFee,
+        amountPaid: draft.amountPaid,
+      }),
+    [draft.items, draft.taxRatePct, draft.invoiceDiscountAmount, draft.shippingFee, draft.amountPaid]
+  );
 
   function update<K extends keyof InvoiceDraft>(k: K, v: InvoiceDraft[K]) {
     setDraft((d) => ({ ...d, [k]: v }));
@@ -63,14 +114,14 @@ export default function App() {
   function updateItem(id: string, patch: Partial<LineItem>) {
     setDraft((d) => ({
       ...d,
-      items: d.items.map((it) => (it.id === id ? { ...it, ...patch } : it))
+      items: d.items.map((it) => (it.id === id ? { ...it, ...patch } : it)),
     }));
   }
 
   function addItem() {
     setDraft((d) => ({
       ...d,
-      items: [...d.items, { id: uid(), description: "", qty: 1, rate: 0 }]
+      items: [...d.items, { id: uid(), description: "", qty: 1, rate: 0, discountPct: 0 }],
     }));
   }
 
@@ -78,31 +129,80 @@ export default function App() {
     setDraft((d) => ({ ...d, items: d.items.filter((it) => it.id !== id) }));
   }
 
+  function clearLogo() {
+    try {
+      window.localStorage.removeItem(LOGO_STORAGE_KEY);
+    } catch {
+      // Ignore storage failures; keep in-memory state consistent.
+    }
+    setDraft((d) => ({ ...d, logoDataUrl: "" }));
+    setLogoError("");
+  }
+
+  async function handleLogoChange(file: File | null) {
+    if (!file) return;
+
+    if (!ALLOWED_LOGO_TYPES.has(file.type)) {
+      setLogoError("Use a PNG or JPG image.");
+      return;
+    }
+    if (file.size > MAX_LOGO_SIZE_BYTES) {
+      setLogoError("Logo must be 5MB or smaller.");
+      return;
+    }
+
+    let dataUrl = "";
+    try {
+      dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("Failed to read image file."));
+        reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+        reader.readAsDataURL(file);
+      });
+    } catch {
+      setLogoError("Failed to load logo file.");
+      return;
+    }
+
+    if (!dataUrl) {
+      setLogoError("Failed to load logo file.");
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(LOGO_STORAGE_KEY, dataUrl);
+    } catch {
+      // Keep working even if storage is unavailable.
+    }
+    setDraft((d) => ({ ...d, logoDataUrl: dataUrl }));
+    setLogoError("");
+  }
+
   async function downloadPDF() {
     await downloadInvoicePdf({
       invoiceNo: draft.invoiceNo,
+      poNo: draft.poNo,
       issueDate: draft.issueDate,
       dueDate: draft.dueDate,
+      paymentTerms: draft.paymentTerms,
       from: draft.from,
       billTo: draft.billTo,
       notes: draft.notes,
+      bankDetails: draft.bankDetails,
+      currency: draft.currency,
       taxRatePct: draft.taxRatePct,
-      items: draft.items
+      invoiceDiscountAmount: draft.invoiceDiscountAmount,
+      shippingFee: draft.shippingFee,
+      amountPaid: draft.amountPaid,
+      logoDataUrl: draft.logoDataUrl,
+      items: draft.items,
     });
     void track("invoice_pdf_download", { items: draft.items.length });
   }
 
   function reset() {
-    setDraft({
-      invoiceNo: "INV-0001",
-      issueDate: todayISO(),
-      dueDate: todayISO(),
-      from: "Your Company\nStreet\nCity, State ZIP",
-      billTo: "Client Name\nStreet\nCity, State ZIP",
-      notes: "Thanks for your business.",
-      taxRatePct: 0,
-      items: [{ id: uid(), description: "Service or product", qty: 1, rate: 100 }]
-    });
+    clearLogo();
+    setDraft(createDefaultDraft());
   }
 
   return (
@@ -138,9 +238,35 @@ export default function App() {
                   placeholder="INV-0001"
                 />
               </div>
-              <div className="pill" style={{ justifyContent: "space-between" }}>
-                <span>Currency</span>
-                <strong>USD</strong>
+              <div>
+                <label htmlFor="poNo">PO number</label>
+                <input id="poNo" value={draft.poNo} onChange={(e) => update("poNo", e.target.value)} placeholder="PO-1001" />
+              </div>
+            </div>
+
+            <div className="row">
+              <div>
+                <label htmlFor="currency">Currency</label>
+                <select
+                  id="currency"
+                  value={draft.currency}
+                  onChange={(e) => update("currency", e.target.value as CurrencyCode)}
+                >
+                  {CURRENCIES.map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="paymentTerms">Payment terms</label>
+                <input
+                  id="paymentTerms"
+                  value={draft.paymentTerms}
+                  onChange={(e) => update("paymentTerms", e.target.value)}
+                  placeholder="Payment due within 15 days"
+                />
               </div>
             </div>
 
@@ -156,12 +282,39 @@ export default function App() {
               </div>
               <div>
                 <label htmlFor="dueDate">Due date</label>
+                <input id="dueDate" type="date" value={draft.dueDate} onChange={(e) => update("dueDate", e.target.value)} />
+              </div>
+            </div>
+
+            <div className="row">
+              <div>
+                <label htmlFor="logo">Logo</label>
                 <input
-                  id="dueDate"
-                  type="date"
-                  value={draft.dueDate}
-                  onChange={(e) => update("dueDate", e.target.value)}
+                  id="logo"
+                  type="file"
+                  accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] || null;
+                    void handleLogoChange(f);
+                  }}
                 />
+                {logoError ? <div className="fineMuted">{logoError}</div> : null}
+                {draft.logoDataUrl ? (
+                  <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center" }}>
+                    <img
+                      src={draft.logoDataUrl}
+                      alt="Invoice logo preview"
+                      style={{ width: 40, height: 40, objectFit: "contain", borderRadius: 8, background: "rgba(255,255,255,0.05)" }}
+                    />
+                    <button className="btn" type="button" onClick={clearLogo}>
+                      Remove logo
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+              <div className="pill" style={{ justifyContent: "space-between" }}>
+                <span>Selected</span>
+                <strong>{draft.currency}</strong>
               </div>
             </div>
 
@@ -180,16 +333,19 @@ export default function App() {
               <table>
                 <thead>
                   <tr>
-                    <th scope="col" style={{ width: "56%" }}>
+                    <th scope="col" style={{ width: "44%" }}>
                       Description
                     </th>
-                    <th scope="col" className="num" style={{ width: "12%" }}>
+                    <th scope="col" className="num" style={{ width: "9%" }}>
                       Qty
                     </th>
-                    <th scope="col" className="num" style={{ width: "16%" }}>
+                    <th scope="col" className="num" style={{ width: "12%" }}>
                       Rate
                     </th>
-                    <th scope="col" className="num" style={{ width: "16%" }}>
+                    <th scope="col" className="num" style={{ width: "11%" }}>
+                      Disc %
+                    </th>
+                    <th scope="col" className="num" style={{ width: "14%" }}>
                       Amount
                     </th>
                     <th scope="col" />
@@ -197,7 +353,7 @@ export default function App() {
                 </thead>
                 <tbody>
                   {draft.items.map((it) => {
-                    const amount = (Number.isFinite(it.qty) ? it.qty : 0) * (Number.isFinite(it.rate) ? it.rate : 0);
+                    const amount = lineNetAmount(it);
                     return (
                       <tr key={it.id}>
                         <td>
@@ -221,7 +377,14 @@ export default function App() {
                             onChange={(e) => updateItem(it.id, { rate: Number(e.target.value) })}
                           />
                         </td>
-                        <td className="num">{money(amount)}</td>
+                        <td className="num">
+                          <input
+                            inputMode="decimal"
+                            value={String(it.discountPct)}
+                            onChange={(e) => updateItem(it.id, { discountPct: Number(e.target.value) })}
+                          />
+                        </td>
+                        <td className="num">{money(amount, draft.currency)}</td>
                         <td className="num">
                           <button className="btn danger" onClick={() => removeItem(it.id)} type="button">
                             Remove
@@ -238,14 +401,25 @@ export default function App() {
               <button className="btn" onClick={addItem} type="button">
                 Add item
               </button>
-              <span className="pill">Tip: keep this simple for the free version.</span>
+              <span className="pill">Line discounts are percent-based.</span>
             </div>
 
             <div className="row" style={{ marginTop: 12 }}>
               <div>
-                <label htmlFor="notes">Notes</label>
+                <label htmlFor="notes">Notes / payment terms</label>
                 <textarea id="notes" value={draft.notes} onChange={(e) => update("notes", e.target.value)} />
               </div>
+              <div>
+                <label htmlFor="bankDetails">Bank / payment details</label>
+                <textarea
+                  id="bankDetails"
+                  value={draft.bankDetails}
+                  onChange={(e) => update("bankDetails", e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="row" style={{ marginTop: 12 }}>
               <div className="totals">
                 <div>
                   <label htmlFor="taxRatePct">Tax rate (%)</label>
@@ -256,17 +430,71 @@ export default function App() {
                     onChange={(e) => update("taxRatePct", Number(e.target.value))}
                   />
                 </div>
+                <div>
+                  <label htmlFor="invoiceDiscountAmount">Invoice discount</label>
+                  <input
+                    id="invoiceDiscountAmount"
+                    inputMode="decimal"
+                    value={String(draft.invoiceDiscountAmount)}
+                    onChange={(e) => update("invoiceDiscountAmount", Number(e.target.value))}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="shippingFee">Shipping fee</label>
+                  <input
+                    id="shippingFee"
+                    inputMode="decimal"
+                    value={String(draft.shippingFee)}
+                    onChange={(e) => update("shippingFee", Number(e.target.value))}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="amountPaid">Amount paid</label>
+                  <input
+                    id="amountPaid"
+                    inputMode="decimal"
+                    value={String(draft.amountPaid)}
+                    onChange={(e) => update("amountPaid", Number(e.target.value))}
+                  />
+                </div>
+              </div>
+
+              <div className="totals">
+                <div className="totalRow">
+                  <span>Line subtotal</span>
+                  <span>{money(totals.lineSubtotal, draft.currency)}</span>
+                </div>
+                <div className="totalRow">
+                  <span>Line discounts</span>
+                  <span>-{money(totals.lineDiscountTotal, draft.currency)}</span>
+                </div>
                 <div className="totalRow">
                   <span>Subtotal</span>
-                  <span>{money(subtotal)}</span>
+                  <span>{money(totals.subtotal, draft.currency)}</span>
+                </div>
+                <div className="totalRow">
+                  <span>Invoice discount</span>
+                  <span>-{money(totals.invoiceDiscountAmountApplied, draft.currency)}</span>
+                </div>
+                <div className="totalRow">
+                  <span>Shipping</span>
+                  <span>{money(totals.shippingFeeApplied, draft.currency)}</span>
                 </div>
                 <div className="totalRow">
                   <span>Tax</span>
-                  <span>{money(tax)}</span>
+                  <span>{money(totals.tax, draft.currency)}</span>
                 </div>
                 <div className="totalRow">
-                  <strong>Total</strong>
-                  <strong>{money(total)}</strong>
+                  <strong>Grand total</strong>
+                  <strong>{money(totals.grandTotal, draft.currency)}</strong>
+                </div>
+                <div className="totalRow">
+                  <span>Amount paid</span>
+                  <span>{money(totals.amountPaidApplied, draft.currency)}</span>
+                </div>
+                <div className="totalRow">
+                  <strong>Balance due</strong>
+                  <strong>{money(totals.balanceDue, draft.currency)}</strong>
                 </div>
               </div>
             </div>
@@ -291,7 +519,15 @@ export default function App() {
               {"\n"}
               {draft.billTo}
               {"\n\n"}
-              <strong style={{ color: "var(--text)" }}>Dates</strong>
+              <strong style={{ color: "var(--text)" }}>Meta</strong>
+              {"\n"}
+              Invoice: {draft.invoiceNo || "-"}
+              {"\n"}
+              PO: {draft.poNo || "-"}
+              {"\n"}
+              Currency: {draft.currency}
+              {"\n"}
+              Terms: {draft.paymentTerms || "-"}
               {"\n"}
               Issue: {draft.issueDate}
               {"\n"}
@@ -299,11 +535,19 @@ export default function App() {
               {"\n\n"}
               <strong style={{ color: "var(--text)" }}>Totals</strong>
               {"\n"}
-              Subtotal: {money(subtotal)}
+              Subtotal: {money(totals.subtotal, draft.currency)}
               {"\n"}
-              Tax: {money(tax)}
+              Tax: {money(totals.tax, draft.currency)}
               {"\n"}
-              Total: {money(total)}
+              Grand total: {money(totals.grandTotal, draft.currency)}
+              {"\n"}
+              Paid: {money(totals.amountPaidApplied, draft.currency)}
+              {"\n"}
+              Balance due: {money(totals.balanceDue, draft.currency)}
+              {"\n\n"}
+              <strong style={{ color: "var(--text)" }}>Bank / payment details</strong>
+              {"\n"}
+              {draft.bankDetails}
               {"\n\n"}
               <strong style={{ color: "var(--text)" }}>Notes</strong>
               {"\n"}
