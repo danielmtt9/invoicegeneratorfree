@@ -13,7 +13,18 @@
   --paper: rgba(255, 255, 255, 0.06);
   --shadow: rgba(0, 0, 0, 0.35);
   --focus: rgba(255, 209, 102, 0.85);
-  font-family: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  font-family: "Manrope", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 * {
@@ -46,7 +57,7 @@ a {
 .wrap {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 28px 18px 52px;
+  padding: var(--space-7) var(--space-5) 52px;
 }
 
 .shell {
@@ -67,7 +78,7 @@ a {
 .hdrInner {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 14px 18px;
+  padding: var(--space-4) var(--space-5);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -84,14 +95,12 @@ a {
 .brandMark {
   width: 42px;
   height: 42px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
+  border-radius: var(--radius-sm);
+  display: block;
+  object-fit: contain;
   background: linear-gradient(135deg, rgba(255, 209, 102, 0.25), rgba(59, 130, 246, 0.22));
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: 0 12px 28px var(--shadow);
-  font-weight: 700;
-  letter-spacing: 0.02em;
 }
 
 .brandName {
@@ -119,7 +128,7 @@ a {
 .container {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 22px 18px 44px;
+  padding: var(--space-6) var(--space-5) 44px;
 }
 
 .pageTitle {
@@ -174,7 +183,7 @@ a {
 
 .actions {
   display: flex;
-  gap: 10px;
+  gap: var(--space-2);
   flex-wrap: wrap;
   justify-content: flex-end;
 }
@@ -184,10 +193,11 @@ a {
   border: 1px solid var(--border);
   background: var(--panel);
   color: var(--text);
-  padding: 10px 12px;
-  border-radius: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   box-shadow: 0 10px 30px var(--shadow);
+  line-height: 1.25;
 }
 
 .btn:hover {
@@ -244,7 +254,7 @@ a {
 .grid {
   display: grid;
   grid-template-columns: 1.25fr 0.75fr;
-  gap: 14px;
+  gap: var(--space-5);
 }
 
 @media (max-width: 900px) {
@@ -256,13 +266,13 @@ a {
 .panel {
   border: 1px solid var(--border);
   background: var(--panel);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   box-shadow: 0 18px 42px var(--shadow);
   overflow: hidden;
 }
 
 .panel .hd {
-  padding: 14px 14px 10px;
+  padding: var(--space-5) var(--space-5) var(--space-4);
   border-bottom: 1px solid rgba(255, 255, 255, 0.10);
 }
 
@@ -274,14 +284,14 @@ a {
 }
 
 .panel .bd {
-  padding: 14px;
+  padding: var(--space-6);
 }
 
 .row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
 @media (max-width: 520px) {
@@ -294,7 +304,8 @@ label {
   display: block;
   font-size: 12px;
   color: var(--muted);
-  margin-bottom: 6px;
+  margin-bottom: var(--space-2);
+  letter-spacing: 0.02em;
 }
 
 input,
@@ -304,15 +315,16 @@ select {
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(0, 0, 0, 0.22);
   color: var(--text);
-  padding: 10px 10px;
-  border-radius: 10px;
+  padding: 11px 12px;
+  border-radius: var(--radius-sm);
   outline: none;
   font: inherit;
+  line-height: 1.4;
 }
 
 textarea {
   resize: vertical;
-  min-height: 80px;
+  min-height: 92px;
 }
 
 table {
@@ -323,7 +335,7 @@ table {
 th,
 td {
   text-align: left;
-  padding: 10px 8px;
+  padding: 12px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.10);
   vertical-align: top;
 }
@@ -345,7 +357,7 @@ th {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 8px 12px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(0, 0, 0, 0.18);
@@ -368,9 +380,9 @@ th {
   width: min(900px, 100%);
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(11, 15, 26, 0.92);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
-  padding: 14px;
+  padding: var(--space-5);
 }
 
 .cookieTitle {
@@ -408,13 +420,13 @@ th {
   width: min(720px, 100%);
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(11, 15, 26, 0.92);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.60);
   overflow: hidden;
 }
 
 .modalHd {
-  padding: 14px;
+  padding: var(--space-5);
   border-bottom: 1px solid rgba(255, 255, 255, 0.10);
   display: flex;
   align-items: center;
@@ -431,7 +443,7 @@ th {
 .iconBtn {
   width: 34px;
   height: 34px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(0, 0, 0, 0.25);
   color: rgba(255, 255, 255, 0.85);
@@ -441,7 +453,7 @@ th {
 }
 
 .modalBd {
-  padding: 14px;
+  padding: var(--space-5);
 }
 
 .settingRow {
@@ -491,4 +503,137 @@ th {
   border-color: rgba(255, 93, 93, 0.55);
   color: rgba(255, 255, 255, 0.9);
   background: rgba(255, 93, 93, 0.10);
+}
+
+.invoiceHd {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.invoiceHdTitle {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.invoiceHdTitle p {
+  margin: 4px 0 0;
+}
+
+.invoiceMiniMark {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  object-fit: contain;
+}
+
+.invoiceForm {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.invoiceSection {
+  display: grid;
+  gap: var(--space-4);
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.invoiceSection:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.sectionTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.logoPreviewRow {
+  margin-top: var(--space-2);
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.logoThumb {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.pillTall {
+  min-height: 44px;
+  justify-content: space-between;
+}
+
+.itemsTableWrap {
+  overflow-x: auto;
+}
+
+.itemsTable th {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.itemsActions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.totalsRowWrap {
+  align-items: start;
+}
+
+.totalsInputs,
+.totalsSummary {
+  padding: var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.totalsSummary .totalRow {
+  min-height: 26px;
+}
+
+.totalStrongRow strong {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.totalAccentRow strong {
+  color: var(--accent);
+}
+
+.previewBrand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.previewBrand img {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
 }

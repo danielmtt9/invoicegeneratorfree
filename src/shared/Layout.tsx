@@ -23,9 +23,7 @@ export function SiteLayout(props: { title: string; children: React.ReactNode; sh
       <header className="hdr">
         <div className="hdrInner">
           <a className="brand" href="/">
-            <div className="brandMark" aria-hidden="true">
-              IG
-            </div>
+            <img className="brandMark" src="/brand/logo-mark.svg" alt="" aria-hidden="true" />
             <div className="brandText">
               <div className="brandName">{SITE.name}</div>
               <div className="brandTag">A product of {SITE.company}</div>
@@ -152,4 +150,3 @@ function CookieSettingsModal() {
     </div>
   );
 }
-

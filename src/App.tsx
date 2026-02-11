@@ -209,295 +209,311 @@ export default function App() {
     <div>
       <div className="grid">
         <section className="panel">
-          <div className="hd">
-            <h2>Invoice</h2>
-          </div>
-          <div className="bd">
-            <div className="row">
-              <div className="pill" style={{ justifyContent: "space-between" }}>
-                <span>PDF export</span>
-                <strong>Ready</strong>
-              </div>
-              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                <button className="btn" onClick={reset} type="button">
-                  Reset
-                </button>
-                <button className="btn primary" onClick={() => void downloadPDF()} type="button">
-                  Download PDF
-                </button>
+          <div className="hd invoiceHd">
+            <div className="invoiceHdTitle">
+              <img className="invoiceMiniMark" src="/brand/logo-mark.svg" alt="" aria-hidden="true" />
+              <div>
+                <h2>Invoice Builder</h2>
+                <p className="fineMuted">Wise-style structure with clearer spacing and faster data entry.</p>
               </div>
             </div>
-
-            <div className="row">
-              <div>
-                <label htmlFor="invoiceNo">Invoice No.</label>
-                <input
-                  id="invoiceNo"
-                  value={draft.invoiceNo}
-                  onChange={(e) => update("invoiceNo", e.target.value)}
-                  placeholder="INV-0001"
-                />
-              </div>
-              <div>
-                <label htmlFor="poNo">PO number</label>
-                <input id="poNo" value={draft.poNo} onChange={(e) => update("poNo", e.target.value)} placeholder="PO-1001" />
-              </div>
-            </div>
-
-            <div className="row">
-              <div>
-                <label htmlFor="currency">Currency</label>
-                <select
-                  id="currency"
-                  value={draft.currency}
-                  onChange={(e) => update("currency", e.target.value as CurrencyCode)}
-                >
-                  {CURRENCIES.map((code) => (
-                    <option key={code} value={code}>
-                      {code}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="paymentTerms">Payment terms</label>
-                <input
-                  id="paymentTerms"
-                  value={draft.paymentTerms}
-                  onChange={(e) => update("paymentTerms", e.target.value)}
-                  placeholder="Payment due within 15 days"
-                />
-              </div>
-            </div>
-
-            <div className="row">
-              <div>
-                <label htmlFor="issueDate">Issue date</label>
-                <input
-                  id="issueDate"
-                  type="date"
-                  value={draft.issueDate}
-                  onChange={(e) => update("issueDate", e.target.value)}
-                />
-              </div>
-              <div>
-                <label htmlFor="dueDate">Due date</label>
-                <input id="dueDate" type="date" value={draft.dueDate} onChange={(e) => update("dueDate", e.target.value)} />
-              </div>
-            </div>
-
-            <div className="row">
-              <div>
-                <label htmlFor="logo">Logo</label>
-                <input
-                  id="logo"
-                  type="file"
-                  accept=".png,.jpg,.jpeg,image/png,image/jpeg"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0] || null;
-                    void handleLogoChange(f);
-                  }}
-                />
-                {logoError ? <div className="fineMuted">{logoError}</div> : null}
-                {draft.logoDataUrl ? (
-                  <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center" }}>
-                    <img
-                      src={draft.logoDataUrl}
-                      alt="Invoice logo preview"
-                      style={{ width: 40, height: 40, objectFit: "contain", borderRadius: 8, background: "rgba(255,255,255,0.05)" }}
-                    />
-                    <button className="btn" type="button" onClick={clearLogo}>
-                      Remove logo
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-              <div className="pill" style={{ justifyContent: "space-between" }}>
-                <span>Selected</span>
-                <strong>{draft.currency}</strong>
-              </div>
-            </div>
-
-            <div className="row">
-              <div>
-                <label htmlFor="from">From</label>
-                <textarea id="from" value={draft.from} onChange={(e) => update("from", e.target.value)} />
-              </div>
-              <div>
-                <label htmlFor="billTo">Bill to</label>
-                <textarea id="billTo" value={draft.billTo} onChange={(e) => update("billTo", e.target.value)} />
-              </div>
-            </div>
-
-            <div style={{ overflowX: "auto" }}>
-              <table>
-                <thead>
-                  <tr>
-                    <th scope="col" style={{ width: "44%" }}>
-                      Description
-                    </th>
-                    <th scope="col" className="num" style={{ width: "9%" }}>
-                      Qty
-                    </th>
-                    <th scope="col" className="num" style={{ width: "12%" }}>
-                      Rate
-                    </th>
-                    <th scope="col" className="num" style={{ width: "11%" }}>
-                      Disc %
-                    </th>
-                    <th scope="col" className="num" style={{ width: "14%" }}>
-                      Amount
-                    </th>
-                    <th scope="col" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {draft.items.map((it) => {
-                    const amount = lineNetAmount(it);
-                    return (
-                      <tr key={it.id}>
-                        <td>
-                          <input
-                            value={it.description}
-                            onChange={(e) => updateItem(it.id, { description: e.target.value })}
-                            placeholder="Line item description"
-                          />
-                        </td>
-                        <td className="num">
-                          <input
-                            inputMode="decimal"
-                            value={String(it.qty)}
-                            onChange={(e) => updateItem(it.id, { qty: Number(e.target.value) })}
-                          />
-                        </td>
-                        <td className="num">
-                          <input
-                            inputMode="decimal"
-                            value={String(it.rate)}
-                            onChange={(e) => updateItem(it.id, { rate: Number(e.target.value) })}
-                          />
-                        </td>
-                        <td className="num">
-                          <input
-                            inputMode="decimal"
-                            value={String(it.discountPct)}
-                            onChange={(e) => updateItem(it.id, { discountPct: Number(e.target.value) })}
-                          />
-                        </td>
-                        <td className="num">{money(amount, draft.currency)}</td>
-                        <td className="num">
-                          <button className="btn danger" onClick={() => removeItem(it.id)} type="button">
-                            Remove
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
-              <button className="btn" onClick={addItem} type="button">
-                Add item
+            <div className="actions">
+              <button className="btn" onClick={reset} type="button">
+                Reset
               </button>
-              <span className="pill">Line discounts are percent-based.</span>
+              <button className="btn primary" onClick={() => void downloadPDF()} type="button">
+                Download PDF
+              </button>
             </div>
-
-            <div className="row" style={{ marginTop: 12 }}>
-              <div>
-                <label htmlFor="notes">Notes / payment terms</label>
-                <textarea id="notes" value={draft.notes} onChange={(e) => update("notes", e.target.value)} />
-              </div>
-              <div>
-                <label htmlFor="bankDetails">Bank / payment details</label>
-                <textarea
-                  id="bankDetails"
-                  value={draft.bankDetails}
-                  onChange={(e) => update("bankDetails", e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="row" style={{ marginTop: 12 }}>
-              <div className="totals">
-                <div>
-                  <label htmlFor="taxRatePct">Tax rate (%)</label>
-                  <input
-                    id="taxRatePct"
-                    inputMode="decimal"
-                    value={String(draft.taxRatePct)}
-                    onChange={(e) => update("taxRatePct", Number(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="invoiceDiscountAmount">Invoice discount</label>
-                  <input
-                    id="invoiceDiscountAmount"
-                    inputMode="decimal"
-                    value={String(draft.invoiceDiscountAmount)}
-                    onChange={(e) => update("invoiceDiscountAmount", Number(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="shippingFee">Shipping fee</label>
-                  <input
-                    id="shippingFee"
-                    inputMode="decimal"
-                    value={String(draft.shippingFee)}
-                    onChange={(e) => update("shippingFee", Number(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="amountPaid">Amount paid</label>
-                  <input
-                    id="amountPaid"
-                    inputMode="decimal"
-                    value={String(draft.amountPaid)}
-                    onChange={(e) => update("amountPaid", Number(e.target.value))}
-                  />
+          </div>
+          <div className="bd invoiceForm">
+            <section className="invoiceSection">
+              <div className="sectionTitleRow">
+                <h3 className="sectionTitle">Meta</h3>
+                <div className="pill">
+                  <span>Currency</span>
+                  <strong>{draft.currency}</strong>
                 </div>
               </div>
 
-              <div className="totals">
-                <div className="totalRow">
-                  <span>Line subtotal</span>
-                  <span>{money(totals.lineSubtotal, draft.currency)}</span>
+              <div className="row">
+                <div>
+                  <label htmlFor="invoiceNo">Invoice No.</label>
+                  <input
+                    id="invoiceNo"
+                    value={draft.invoiceNo}
+                    onChange={(e) => update("invoiceNo", e.target.value)}
+                    placeholder="INV-0001"
+                  />
                 </div>
-                <div className="totalRow">
-                  <span>Line discounts</span>
-                  <span>-{money(totals.lineDiscountTotal, draft.currency)}</span>
-                </div>
-                <div className="totalRow">
-                  <span>Subtotal</span>
-                  <span>{money(totals.subtotal, draft.currency)}</span>
-                </div>
-                <div className="totalRow">
-                  <span>Invoice discount</span>
-                  <span>-{money(totals.invoiceDiscountAmountApplied, draft.currency)}</span>
-                </div>
-                <div className="totalRow">
-                  <span>Shipping</span>
-                  <span>{money(totals.shippingFeeApplied, draft.currency)}</span>
-                </div>
-                <div className="totalRow">
-                  <span>Tax</span>
-                  <span>{money(totals.tax, draft.currency)}</span>
-                </div>
-                <div className="totalRow">
-                  <strong>Grand total</strong>
-                  <strong>{money(totals.grandTotal, draft.currency)}</strong>
-                </div>
-                <div className="totalRow">
-                  <span>Amount paid</span>
-                  <span>{money(totals.amountPaidApplied, draft.currency)}</span>
-                </div>
-                <div className="totalRow">
-                  <strong>Balance due</strong>
-                  <strong>{money(totals.balanceDue, draft.currency)}</strong>
+                <div>
+                  <label htmlFor="poNo">PO number</label>
+                  <input id="poNo" value={draft.poNo} onChange={(e) => update("poNo", e.target.value)} placeholder="PO-1001" />
                 </div>
               </div>
-            </div>
+
+              <div className="row">
+                <div>
+                  <label htmlFor="currency">Currency</label>
+                  <select
+                    id="currency"
+                    value={draft.currency}
+                    onChange={(e) => update("currency", e.target.value as CurrencyCode)}
+                  >
+                    {CURRENCIES.map((code) => (
+                      <option key={code} value={code}>
+                        {code}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="paymentTerms">Payment terms</label>
+                  <input
+                    id="paymentTerms"
+                    value={draft.paymentTerms}
+                    onChange={(e) => update("paymentTerms", e.target.value)}
+                    placeholder="Payment due within 15 days"
+                  />
+                  <div className="fineMuted">Add due terms, accepted methods, and any late-fee policy.</div>
+                </div>
+              </div>
+
+              <div className="row">
+                <div>
+                  <label htmlFor="issueDate">Issue date</label>
+                  <input
+                    id="issueDate"
+                    type="date"
+                    value={draft.issueDate}
+                    onChange={(e) => update("issueDate", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="dueDate">Due date</label>
+                  <input id="dueDate" type="date" value={draft.dueDate} onChange={(e) => update("dueDate", e.target.value)} />
+                </div>
+              </div>
+
+              <div className="row">
+                <div>
+                  <label htmlFor="logo">Logo</label>
+                  <input
+                    id="logo"
+                    type="file"
+                    accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] || null;
+                      void handleLogoChange(f);
+                    }}
+                  />
+                  <div className="fineMuted">JPG/PNG up to 5MB. Stored locally in your browser only.</div>
+                  {logoError ? <div className="fineMuted">{logoError}</div> : null}
+                  {draft.logoDataUrl ? (
+                    <div className="logoPreviewRow">
+                      <img src={draft.logoDataUrl} alt="Invoice logo preview" className="logoThumb" />
+                      <button className="btn" type="button" onClick={clearLogo}>
+                        Remove logo
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+                <div className="pill pillTall">
+                  <span>PDF export</span>
+                  <strong>Ready</strong>
+                </div>
+              </div>
+            </section>
+
+            <section className="invoiceSection">
+              <h3 className="sectionTitle">Parties</h3>
+              <div className="row">
+                <div>
+                  <label htmlFor="from">From</label>
+                  <textarea id="from" value={draft.from} onChange={(e) => update("from", e.target.value)} />
+                </div>
+                <div>
+                  <label htmlFor="billTo">Bill to</label>
+                  <textarea id="billTo" value={draft.billTo} onChange={(e) => update("billTo", e.target.value)} />
+                </div>
+              </div>
+            </section>
+
+            <section className="invoiceSection">
+              <h3 className="sectionTitle">Items</h3>
+              <div className="itemsTableWrap">
+                <table className="itemsTable">
+                  <thead>
+                    <tr>
+                      <th scope="col" style={{ width: "44%" }}>
+                        Description
+                      </th>
+                      <th scope="col" className="num" style={{ width: "9%" }}>
+                        Qty
+                      </th>
+                      <th scope="col" className="num" style={{ width: "12%" }}>
+                        Rate
+                      </th>
+                      <th scope="col" className="num" style={{ width: "11%" }}>
+                        Disc %
+                      </th>
+                      <th scope="col" className="num" style={{ width: "14%" }}>
+                        Amount
+                      </th>
+                      <th scope="col" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {draft.items.map((it) => {
+                      const amount = lineNetAmount(it);
+                      return (
+                        <tr key={it.id}>
+                          <td>
+                            <input
+                              value={it.description}
+                              onChange={(e) => updateItem(it.id, { description: e.target.value })}
+                              placeholder="Line item description"
+                            />
+                          </td>
+                          <td className="num">
+                            <input
+                              inputMode="decimal"
+                              value={String(it.qty)}
+                              onChange={(e) => updateItem(it.id, { qty: Number(e.target.value) })}
+                            />
+                          </td>
+                          <td className="num">
+                            <input
+                              inputMode="decimal"
+                              value={String(it.rate)}
+                              onChange={(e) => updateItem(it.id, { rate: Number(e.target.value) })}
+                            />
+                          </td>
+                          <td className="num">
+                            <input
+                              inputMode="decimal"
+                              value={String(it.discountPct)}
+                              onChange={(e) => updateItem(it.id, { discountPct: Number(e.target.value) })}
+                            />
+                          </td>
+                          <td className="num">{money(amount, draft.currency)}</td>
+                          <td className="num">
+                            <button className="btn danger" onClick={() => removeItem(it.id)} type="button">
+                              Remove
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="itemsActions">
+                <button className="btn" onClick={addItem} type="button">
+                  Add item
+                </button>
+                <span className="pill">Line discounts are percent-based.</span>
+              </div>
+            </section>
+
+            <section className="invoiceSection">
+              <h3 className="sectionTitle">Payment & totals</h3>
+              <div className="row">
+                <div>
+                  <label htmlFor="notes">Notes / payment terms</label>
+                  <textarea id="notes" value={draft.notes} onChange={(e) => update("notes", e.target.value)} />
+                </div>
+                <div>
+                  <label htmlFor="bankDetails">Bank / payment details</label>
+                  <textarea
+                    id="bankDetails"
+                    value={draft.bankDetails}
+                    onChange={(e) => update("bankDetails", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="row totalsRowWrap">
+                <div className="totals totalsInputs">
+                  <div>
+                    <label htmlFor="taxRatePct">Tax rate (%)</label>
+                    <input
+                      id="taxRatePct"
+                      inputMode="decimal"
+                      value={String(draft.taxRatePct)}
+                      onChange={(e) => update("taxRatePct", Number(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="invoiceDiscountAmount">Invoice discount</label>
+                    <input
+                      id="invoiceDiscountAmount"
+                      inputMode="decimal"
+                      value={String(draft.invoiceDiscountAmount)}
+                      onChange={(e) => update("invoiceDiscountAmount", Number(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="shippingFee">Shipping fee</label>
+                    <input
+                      id="shippingFee"
+                      inputMode="decimal"
+                      value={String(draft.shippingFee)}
+                      onChange={(e) => update("shippingFee", Number(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="amountPaid">Amount paid</label>
+                    <input
+                      id="amountPaid"
+                      inputMode="decimal"
+                      value={String(draft.amountPaid)}
+                      onChange={(e) => update("amountPaid", Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+
+                <div className="totals totalsSummary">
+                  <div className="totalRow">
+                    <span>Line subtotal</span>
+                    <span>{money(totals.lineSubtotal, draft.currency)}</span>
+                  </div>
+                  <div className="totalRow">
+                    <span>Line discounts</span>
+                    <span>-{money(totals.lineDiscountTotal, draft.currency)}</span>
+                  </div>
+                  <div className="totalRow">
+                    <span>Subtotal</span>
+                    <span>{money(totals.subtotal, draft.currency)}</span>
+                  </div>
+                  <div className="totalRow">
+                    <span>Invoice discount</span>
+                    <span>-{money(totals.invoiceDiscountAmountApplied, draft.currency)}</span>
+                  </div>
+                  <div className="totalRow">
+                    <span>Shipping</span>
+                    <span>{money(totals.shippingFeeApplied, draft.currency)}</span>
+                  </div>
+                  <div className="totalRow">
+                    <span>Tax</span>
+                    <span>{money(totals.tax, draft.currency)}</span>
+                  </div>
+                  <div className="totalRow totalStrongRow">
+                    <strong>Grand total</strong>
+                    <strong>{money(totals.grandTotal, draft.currency)}</strong>
+                  </div>
+                  <div className="totalRow">
+                    <span>Amount paid</span>
+                    <span>{money(totals.amountPaidApplied, draft.currency)}</span>
+                  </div>
+                  <div className="totalRow totalAccentRow">
+                    <strong>Balance due</strong>
+                    <strong>{money(totals.balanceDue, draft.currency)}</strong>
+                  </div>
+                </div>
+              </div>
+            </section>
           </div>
         </section>
 
@@ -506,11 +522,14 @@ export default function App() {
             <h2>Preview</h2>
           </div>
           <div className="bd">
-            <div className="pill" style={{ marginBottom: 10 }}>
-              <span>Invoice</span>
-              <strong>{draft.invoiceNo || "Untitled"}</strong>
+            <div className="previewBrand">
+              <img src="/brand/logo-mark.svg" alt="" aria-hidden="true" />
+              <div>
+                <strong>{draft.invoiceNo || "Untitled"}</strong>
+                <div className="fineMuted">{draft.currency} invoice</div>
+              </div>
             </div>
-            <div style={{ color: "var(--muted)", fontSize: 13, whiteSpace: "pre-wrap", lineHeight: 1.35 }}>
+            <div style={{ color: "var(--muted)", fontSize: 13, whiteSpace: "pre-wrap", lineHeight: 1.45 }}>
               <strong style={{ color: "var(--text)" }}>From</strong>
               {"\n"}
               {draft.from}
